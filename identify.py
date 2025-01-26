@@ -220,7 +220,10 @@ def process_video(video_url, addr, config):
     pre_shoot_min_error = float('inf')
     previous_shoot_y = float('inf')
     shoot_min_y = float('inf')
-
+    # 创建一个新的字典用于存储所有满足preparing条件的数据
+    pre_shoot_frames_data = {
+        "frames": []  # 存储所有符合条件的帧数据
+    }
     # 获取视频目录
     video_dir = os.path.dirname(video_url)
     if not video_dir:
@@ -234,7 +237,6 @@ def process_video(video_url, addr, config):
         if not ret:
             print(f"Cannot read frame or end of video: {video_url}")
             break
-
 
         frame_count += 1
         results_pose = detect_pose(frame, pose)
@@ -254,6 +256,10 @@ def process_video(video_url, addr, config):
             if preparing:
                 if error < pre_shoot_min_error:
                     pre_shoot_min_error = error
+                    pre_shoot_frames_data["frames"].append({
+                        "frame_number": frame_count,
+                        "error": error
+                    })
                     action_data["pre_shoot_frame"] = frame_count
                     if config['save_shoot_images']:
                         save_frame(frame, frame_count, "pre_shoot", output_dir)
@@ -296,6 +302,17 @@ def process_video(video_url, addr, config):
         if config['save_shoot_images'] and last_frame is not None:
             save_frame(last_frame, frame_count, "shoot", output_dir)
 
+    if action_data["pre_shoot_frame"] is not None and action_data["shoot_frame"] is not None:
+        if action_data["pre_shoot_frame"] > action_data["shoot_frame"]:
+            # 从 pre_shoot_frames_data 中找到小于 shoot_frame 的最大值
+            valid_pre_shoot_frames = [item for item in pre_shoot_frames_data["frames"] if
+                                      item["frame_number"] < action_data["shoot_frame"]]
+            if valid_pre_shoot_frames:
+                # 找到小于 shoot_frame 的最大 pre_shoot_frame
+                action_data["pre_shoot_frame"] = max(valid_pre_shoot_frames, key=lambda x: x["frame_number"])[
+                    "frame_number"]
+                # print(f"Updated pre_shoot_frame to {action_data['pre_shoot_frame']}")
+
     # 释放资源
     cap.release()
     pose.close()
@@ -312,7 +329,6 @@ def process_video(video_url, addr, config):
     # 发送处理成功消息
     success_message = "Video processing completed successfully."
     send_udp_message(success_message, addr)
-
 
 
 def main(config):
