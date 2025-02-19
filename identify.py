@@ -266,7 +266,7 @@ def process_video(video_url, addr, config):
 
             # 判断投球动作
             shooting, current_shoot_y = is_shooting(landmarks, previous_shoot_y, config)
-            if shooting:
+            if shooting and frame_count>1:
                 last_frame = frame
                 shoot_frame = frame_count
                 # save_frame(frame, frame_count, "shoot", output_dir)
@@ -303,7 +303,7 @@ def process_video(video_url, addr, config):
             save_frame(last_frame, frame_count, "shoot", output_dir)
 
     if action_data["pre_shoot_frame"] is not None and action_data["shoot_frame"] is not None:
-        if action_data["pre_shoot_frame"] > action_data["shoot_frame"]:
+        if action_data["pre_shoot_frame"] >= action_data["shoot_frame"]:
             # 从 pre_shoot_frames_data 中找到小于 shoot_frame 的最大值
             valid_pre_shoot_frames = [item for item in pre_shoot_frames_data["frames"] if
                                       item["frame_number"] < action_data["shoot_frame"]]
