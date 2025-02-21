@@ -1,17 +1,17 @@
 {
     "udp_ip": "127.0.0.1",
-    "udp_port": 5005,
+    "udp_port": 5006,
     "output_dir": "output",
     "save_shoot_images": true,
-    "draw_landmarks": false,
-    "display_video": false,
+    "draw_landmarks": true,
+    "display_video": true,
     "pose": {
         "min_detection_confidence": 0.3,
         "min_tracking_confidence": 0.3
     },
     "thresholds": {
-        "left_knee_threshold": 165,
-        "right_knee_threshold": 165,
+        "left_knee_threshold": 175,
+        "right_knee_threshold": 175,
         "hands_aligned_threshold": 0.15,
         "shoot_y_threshold": 0.02,
         "palm_up_threshold": 0.0005

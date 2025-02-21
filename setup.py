@@ -12,9 +12,9 @@ build_exe_options = {
 
 
 setup(
-    name="Video Processing Program",
+    name="ai_identify",
     version="1.0",
     description="A program to process video and extract pose keypoints",
-    options={"build_exe": build_exe_options},
+    # options={"build_exe": build_exe_options},
     executables=[Executable(script, base=None)],
 )

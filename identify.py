@@ -7,10 +7,31 @@ import sys
 import socket
 import threading
 from queue import Queue
+import logging
+from logging.handlers import RotatingFileHandler
 
 # 初始化MediaPipe Pose
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
+
+
+# 配置日志
+log_file = 'ai_identify.log'
+max_log_size = 5 * 1024 * 1024  # 5MB
+backup_count = 500
+
+
+
+handler = RotatingFileHandler(
+    log_file, maxBytes=max_log_size, backupCount=backup_count
+)
+
+logging.basicConfig(
+    handlers=[handler],
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 
 def load_config(config_path='config.json'):
@@ -18,7 +39,7 @@ def load_config(config_path='config.json'):
     读取配置文件
     """
     if not os.path.exists(config_path):
-        print(f"Configuration file not found: {config_path}")
+        logging.error(f"Configuration file not found: {config_path}")
         sys.exit(1)
     with open(config_path, 'r') as f:
         config = json.load(f)
@@ -31,7 +52,7 @@ def get_video_stream(video_url):
     """
     cap = cv2.VideoCapture(video_url)
     if not cap.isOpened():
-        print(f"Unable to open video stream: {video_url}")
+        logging.error(f"Unable to open video stream: {video_url}")
         return None
     return cap
 
@@ -175,20 +196,20 @@ def udp_listener(ip, port, queue, stop_event):
     """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind((ip, port))
-    print(f"UDP listener started, listening on {ip}:{port}")
+    logging.info(f"UDP listener started, listening on {ip}:{port}")
     sock.settimeout(1.0)  # 设置超时以便定期检查停止事件
     while not stop_event.is_set():
         try:
             data, addr = sock.recvfrom(4096)
             video_url = data.decode('utf-8').strip()
-            print(f"Received video URL: {video_url} from {addr}")
+            logging.info(f"Received video URL: {video_url} from {addr}")
             queue.put((video_url, addr))
         except socket.timeout:
             continue
         except Exception as e:
-            print(f"UDP listener error: {e}")
+            logging.error(f"UDP listener error: {e}")
     sock.close()
-    print("UDP listener stopped")
+    logging.info("UDP listener stopped")
 
 
 def send_udp_message(message, addr):
@@ -230,12 +251,12 @@ def process_video(video_url, addr, config):
         video_dir = config['output_dir']
     output_dir = video_dir if video_dir else config['output_dir']
 
-    print(f"Start processing video: {video_url}")
+    logging.info(f"Start processing video: {video_url}")
     last_frame = None  # 用于存储最后一帧
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
-            print(f"Cannot read frame or end of video: {video_url}")
+            logging.error(f"Cannot read frame or end of video: {video_url}")
             break
 
         frame_count += 1
@@ -292,7 +313,7 @@ def process_video(video_url, addr, config):
         if config['display_video']:
             cv2.imshow('Pose Detection', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
-                print("Exit command received, stopping video processing.")
+                logging.info("Exit command received, stopping video processing.")
                 break
 
     # 如果没有检测到投篮帧，保存最后的投篮帧
@@ -324,7 +345,7 @@ def process_video(video_url, addr, config):
     json_filename = f"{video_name}_ai_identify.json"
     json_path = os.path.join(output_dir, json_filename)
     save_json(action_data, json_path)
-    print(f"Video processing completed, data saved to {json_path}")
+    logging.info(f"Video processing completed, data saved to {json_path}")
 
     # 发送处理成功消息
     success_message = "Video processing completed successfully."
@@ -352,11 +373,11 @@ def main(config):
             except:
                 continue
     except KeyboardInterrupt:
-        print("Program interrupted by user, exiting...")
+        logging.info("Program interrupted by user, exiting...")
     finally:
         stop_event.set()
         listener_thread.join()
-        print("Program exited.")
+        logging.info("Program exited.")
 
 
 if __name__ == "__main__":
